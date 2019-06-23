@@ -66,7 +66,7 @@ def train_agent():
     # Training Parameters
     learning_rate = 0.0001
     training_steps = 10000
-    batch_size = 32
+    batch_size = 128
     display_step = 20
 
     # Network Parameters
@@ -96,22 +96,27 @@ def train_agent():
         x = tf.unstack(x, timesteps, 1)
 
         # Define a lstm cell with tensorflow
-        lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
-
+        # lstm_cell = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+        layer1 = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+        layer2 = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+        layer3 = rnn.BasicLSTMCell(num_hidden, forget_bias=1.0)
+        cells = [layer1, layer2, layer3]
+        multirnn = rnn.MultiRNNCell(cells)
         # Get lstm cell output
-        outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+        # outputs, states = rnn.static_rnn(lstm_cell, x, dtype=tf.float32)
+        outputs, states = rnn.static_rnn(multirnn, x, dtype=tf.float32)
 
         # Linear activation, using rnn inner loop last output
         return tf.matmul(outputs[-1], weights['out']) + biases['out']
 
     prediction = RNN(X, weights, biases)
-
+    print "number of parameters", count_all_parameters(None)
     # Define loss and optimizer
     loss_op = tf.reduce_mean(tf.losses.mean_squared_error(predictions=prediction, labels=Y))  # MSE
     # loss_op = tf.reduce_mean(tf.div(tf.losses.absolute_difference(labels=Y, predictions=prediction, reduction=tf.losses.Reduction.NONE), Y))    # relative error
     # loss_op = tf.reduce_mean(tf.losses.absolute_difference(labels=Y, predictions=prediction))
     # abs_loss = tf.losses.absolute_difference(labels=Y, predictions=prediction, reduction=tf.losses.Reduction.NONE)
-    # abs_div = tf.div(tf.losses.absolute_difference(labels=Y, predictions=prediction, reduction=tf.losses.Reduction.NONE), Y)
+    # abs_div = tf.reduce_mean(tf.div(tf.losses.absolute_difference(labels=Y, predictions=prediction, reduction=tf.losses.Reduction.NONE), Y))
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
     train_op = optimizer.minimize(loss_op)
 
@@ -163,15 +168,28 @@ def train_agent():
                     test_label = np.array(y_test).reshape((-1, 1))
                     test_error = sess.run(loss_op, feed_dict={X: test_data, Y: test_label})
                     print "Testing MSE Error:", test_error
-                    loss_summary = tf.Summary(value=[tf.Summary.Value(tag="loss", simple_value=loss)])
+
+                    loss_summary = tf.Summary(value=[tf.Summary.Value(tag="MSE loss", simple_value=loss)])
                     tf_writer.add_summary(loss_summary, step)
-                    test_summary = tf.Summary(value=[tf.Summary.Value(tag="test loss", simple_value=test_error)])
+                    test_summary = tf.Summary(value=[tf.Summary.Value(tag="test MSE loss", simple_value=test_error)])
                     tf_writer.add_summary(test_summary, step)
+
                     tf_writer.flush()
                     # return
 
 
-
+def count_all_parameters(scope):
+    total_parameters = 0
+    for variable in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=scope):
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        # print variable.name, variable.value
+        variable_parameters = 1
+        for dim in shape:
+            variable_parameters *= dim.value
+        # print "varable in each layer {0}".format(variable_parameters)
+        total_parameters += variable_parameters
+    return total_parameters
 
 if __name__ == '__main__':
     os.system("rm ./events.*")
