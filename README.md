@@ -5,3 +5,16 @@ Predict the EPS (earning per share) in th next year based on the features (e.g.,
 The input features ranges accross 4 years and we use RNN to train the model to memorize the historical information. The metric is the mean-square-error of the predicted EPS and the real EPS in the next year.
 
 Then with the well-trained model, we can predict the EPS in the next year of one company, given the information of that company in previuos years.
+
+# Prerequisites
+
+TensorFlow 1.4.1, Python 2.7.6
+
+# Train and test the model
+
+Run 
+```python
+python train.py
+```
+
+The loss curve of training and testing is ![alt text](https://github.com/I-Hsin/predict-eps/blob/master/loss.JPG)
